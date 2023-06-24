@@ -9,7 +9,7 @@ use log::debug;
 #[cfg(feature = "defmt-log")]
 use defmt::debug;
 
-use crate::fat::{self, RESERVED_ENTRIES};
+use crate::fat::{self, BlockCache, RESERVED_ENTRIES};
 use crate::filesystem::{
     Attributes, Cluster, DirEntry, Directory, File, Mode, ShortFileName, TimeSource, MAX_FILE_SIZE,
 };
@@ -636,9 +636,10 @@ where
         // How many clusters forward do we need to go?
         let offset_from_cluster = desired_offset - start.0;
         let num_clusters = offset_from_cluster / bytes_per_cluster;
+        let mut block_cache = BlockCache::empty();
         for _ in 0..num_clusters {
             start.1 = match &volume.volume_type {
-                VolumeType::Fat(fat) => fat.next_cluster(self, start.1)?,
+                VolumeType::Fat(fat) => fat.next_cluster(self, start.1, &mut block_cache)?,
             };
             start.0 += bytes_per_cluster;
         }
